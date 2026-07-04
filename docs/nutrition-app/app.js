@@ -151,6 +151,9 @@ function bindEvents() {
   document.querySelector("#import-json").addEventListener("change", importJson);
   document.querySelector("#clear-data").addEventListener("click", clearData);
   githubForm.addEventListener("submit", saveGithubSettings);
+  document.querySelector("#pull-today").addEventListener("click", () => pullDates([selectedDate]));
+  document.querySelector("#pull-range").addEventListener("click", pullReviewRange);
+  document.querySelector("#pull-all").addEventListener("click", pullAllNutritionDays);
   document.querySelector("#sync-today").addEventListener("click", () => syncDates([selectedDate]));
   document.querySelector("#sync-range").addEventListener("click", syncReviewRange);
 }
@@ -716,6 +719,69 @@ async function syncReviewRange() {
   await syncDates(dates.filter((date) => entriesForDate(date).length > 0 || checkinForDate(date)));
 }
 
+async function pullReviewRange() {
+  const dates = dateRange(reviewFromInput.value || selectedDate, reviewToInput.value || selectedDate);
+  await pullDates(dates);
+}
+
+async function pullAllNutritionDays() {
+  saveGithubSettings(new Event("submit"));
+  const token = localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (!token) {
+    setSyncStatus("Kein GitHub Token gespeichert. Token eintragen und erneut versuchen.", true);
+    return;
+  }
+
+  setSyncStatus("Repo-Liste wird geladen...");
+  try {
+    const files = await listGithubNutritionFiles(token);
+    const dates = files
+      .map((file) => file.name.match(/^(\d{4}-\d{2}-\d{2})\.json$/)?.[1])
+      .filter(Boolean)
+      .sort();
+    await pullDates(dates);
+  } catch (error) {
+    setSyncStatus(`Repo-Liste: Fehler - ${error.message}`, true);
+  }
+}
+
+async function pullDates(dates) {
+  saveGithubSettings(new Event("submit"));
+  const token = localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (!token) {
+    setSyncStatus("Kein GitHub Token gespeichert. Token eintragen und erneut versuchen.", true);
+    return;
+  }
+  if (!dates.length) {
+    setSyncStatus("Keine Tage zum Laden ausgewaehlt.");
+    return;
+  }
+
+  setSyncStatus(`Repo-Daten werden fuer ${dates.length} Tag(e) geladen...`);
+  const results = [];
+  for (const date of dates) {
+    try {
+      const payload = await fetchNutritionDay(date, token);
+      if (!payload) {
+        results.push(`${date}: nicht vorhanden`);
+        setSyncStatus(results.join("\n"));
+        continue;
+      }
+      const result = mergeDayPayload(payload);
+      results.push(`${date}: ${result.entries} Mahlzeit(en), Check-in ${result.checkin ? "ja" : "nein"}`);
+      setSyncStatus(results.join("\n"));
+    } catch (error) {
+      results.push(`${date}: Fehler - ${error.message}`);
+      setSyncStatus(results.join("\n"), true);
+      return;
+    }
+  }
+
+  persist();
+  render();
+  setSyncStatus(`Repo-Laden abgeschlossen.\n${results.join("\n")}`);
+}
+
 async function syncDates(dates) {
   saveGithubSettings(new Event("submit"));
   const token = localStorage.getItem(GITHUB_TOKEN_KEY);
@@ -767,6 +833,76 @@ async function upsertNutritionDay(date, token) {
   return existing ? "aktualisiert" : "angelegt";
 }
 
+async function fetchNutritionDay(date, token) {
+  const config = state.github;
+  const path = `${config.path}/${date}.json`;
+  const url = `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/contents/${path}`;
+  const existing = await getExistingGithubFile(url, config.branch, token);
+  if (!existing) return null;
+  return JSON.parse(base64Decode(existing.content || ""));
+}
+
+async function listGithubNutritionFiles(token) {
+  const config = state.github;
+  const url = `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/contents/${config.path}`;
+  const response = await fetch(`${url}?ref=${encodeURIComponent(config.branch)}`, {
+    headers: githubHeaders(token)
+  });
+  if (response.status === 404) return [];
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.message || `GitHub API ${response.status}`);
+  }
+  const files = await response.json();
+  return Array.isArray(files) ? files.filter((file) => file.type === "file" && file.name.endsWith(".json")) : [];
+}
+
+function mergeDayPayload(payload) {
+  if (!payload || !payload.date) {
+    throw new Error("Ungueltige Tagesdatei");
+  }
+
+  const incomingEntries = Array.isArray(payload.entries) ? payload.entries : [];
+  state.entries = state.entries.filter((entry) => entry.date !== payload.date);
+  state.entries.push(...incomingEntries);
+
+  state.checkins = state.checkins.filter((checkin) => checkin.date !== payload.date);
+  if (payload.dailyCheckin) {
+    state.checkins.push(payload.dailyCheckin);
+  }
+
+  if (payload.goals) {
+    state.goals = { ...state.goals, ...payload.goals };
+  }
+  if (Array.isArray(payload.routines) && payload.routines.length) {
+    payload.routines.forEach((routine) => upsertById(state.routines, routine, "id"));
+  }
+
+  selectedDate = payload.date;
+  selectedDateInput.value = selectedDate;
+  return { entries: incomingEntries.length, checkin: Boolean(payload.dailyCheckin) };
+}
+
+function upsertById(list, item, idKey) {
+  if (!item || !item[idKey]) return;
+  const index = list.findIndex((existing) => existing[idKey] === item[idKey]);
+  if (index >= 0) {
+    list[index] = { ...list[index], ...item };
+  } else {
+    list.push(item);
+  }
+}
+
+function upsertCheckin(checkin) {
+  if (!checkin) return;
+  const index = state.checkins.findIndex((existing) => existing.id === checkin.id || existing.date === checkin.date);
+  if (index >= 0) {
+    state.checkins[index] = { ...state.checkins[index], ...checkin };
+  } else {
+    state.checkins.push(checkin);
+  }
+}
+
 async function getExistingGithubFile(url, branch, token) {
   const response = await fetch(`${url}?ref=${encodeURIComponent(branch)}`, {
     headers: githubHeaders(token)
@@ -815,6 +951,12 @@ function base64Encode(value) {
     binary += String.fromCharCode(byte);
   });
   return btoa(binary);
+}
+
+function base64Decode(value) {
+  const binary = atob(String(value || "").replace(/\s/g, ""));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 function setSyncStatus(message, isError = false) {

@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./assets/app-icon.svg">
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./styles.css?v=20260704-sync2">
   </head>
   <body>
     <div class="app-shell">
@@ -481,6 +481,9 @@
               </label>
               <div class="form-actions wide">
                 <button class="primary-button" type="submit">Sync-Einstellungen speichern</button>
+                <button class="secondary-button" type="button" id="pull-today">Heute aus Repo laden</button>
+                <button class="secondary-button" type="button" id="pull-range">Review-Zeitraum laden</button>
+                <button class="secondary-button" type="button" id="pull-all">Repo-Liste laden</button>
                 <button class="secondary-button" type="button" id="sync-today">Heute ins Repo schreiben</button>
                 <button class="secondary-button" type="button" id="sync-range">Review-Zeitraum schreiben</button>
               </div>
@@ -492,6 +495,9 @@
               <p>
                 Empfohlen ist ein Fine-grained GitHub Token nur fuer dieses Repository mit
                 `Contents: Read and write`. Der Token bleibt im Safari-Browserprofil und wird nicht exportiert.
+              </p>
+              <p>
+                Typischer Geraetewechsel: zuerst "aus Repo laden", dann lokal bearbeiten, danach "ins Repo schreiben".
               </p>
             </section>
           </section>
