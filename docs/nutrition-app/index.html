@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>GesundheitsCoach Ernaehrung</title>
+    <meta
+      name="description"
+      content="Private Browser-App zur strukturierten Erfassung von Mahlzeiten, Routinen, Protein, Koffein, Alkohol und Symptomen."
+    >
+    <meta name="theme-color" content="#145642">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Ernaehrung">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./assets/app-icon.svg">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <img src="./assets/nutrition-header.png" alt="" aria-hidden="true">
+        <div class="hero__overlay"></div>
+        <div class="hero__content">
+          <p class="eyebrow">GesundheitsCoach</p>
+          <h1>Ernaehrung einfach tracken</h1>
+          <p>
+            Mahlzeiten, Routinen, Protein, Koffein, Alkohol und Reflux-Kontext lokal im Browser erfassen.
+          </p>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar" aria-label="Navigation">
+          <div class="brand-block">
+            <span class="brand-mark" aria-hidden="true">GC</span>
+            <div>
+              <strong>Nutrition Log</strong>
+              <span>Lokal gespeichert</span>
+            </div>
+          </div>
+          <nav class="tabs" aria-label="Ansichten">
+            <button class="tab is-active" type="button" data-view="today">Heute</button>
+            <button class="tab" type="button" data-view="checkin">Check-in</button>
+            <button class="tab" type="button" data-view="entry">Eintrag</button>
+            <button class="tab" type="button" data-view="routines">Routinen</button>
+            <button class="tab" type="button" data-view="review">Review</button>
+            <button class="tab" type="button" data-view="sync">Sync</button>
+            <button class="tab" type="button" data-view="data">Daten</button>
+          </nav>
+        </aside>
+
+        <section class="content">
+          <section class="view is-active" id="view-today" aria-labelledby="today-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">Tagessteuerung</p>
+                <h2 id="today-title">Heute</h2>
+              </div>
+              <label class="date-picker">
+                <span>Datum</span>
+                <input id="selected-date" type="date">
+              </label>
+            </div>
+
+            <div class="metric-grid" id="metric-grid"></div>
+
+            <div class="split-layout">
+              <section class="panel">
+                <div class="panel-header">
+                  <h3>Mahlzeiten</h3>
+                  <button class="secondary-button" type="button" data-switch-view="entry">Eintrag anlegen</button>
+                </div>
+                <div id="entry-list" class="entry-list"></div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-header">
+                  <h3>Tages-Check-in</h3>
+                  <button class="secondary-button" type="button" data-switch-view="checkin">Check-in</button>
+                </div>
+                <div id="checkin-summary" class="entry-list"></div>
+              </section>
+            </div>
+
+            <div class="split-layout lower-layout">
+              <section class="panel">
+                <div class="panel-header">
+                  <h3>Schnell erfassen</h3>
+                </div>
+                <div id="preset-list" class="preset-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="view" id="view-checkin" aria-labelledby="checkin-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">Tageskontext</p>
+                <h2 id="checkin-title">Daily Check-in</h2>
+              </div>
+              <button class="ghost-button" type="button" id="reset-checkin-form">Formular leeren</button>
+            </div>
+
+            <form id="checkin-form" class="form-grid">
+              <input type="hidden" id="checkin-id">
+
+              <label>
+                <span>Datum</span>
+                <input id="checkin-date" name="date" type="date" required>
+              </label>
+              <label>
+                <span>Gewicht morgens (kg)</span>
+                <input id="checkin-weight" name="morningWeightKg" type="number" min="0" step="0.1" inputmode="decimal">
+              </label>
+              <label>
+                <span>Blutdruck morgens</span>
+                <input id="checkin-bp-morning" name="bloodPressureMorning" type="text" placeholder="z. B. 120/80">
+              </label>
+              <label>
+                <span>Blutdruck abends</span>
+                <input id="checkin-bp-evening" name="bloodPressureEvening" type="text" placeholder="optional">
+              </label>
+
+              <label>
+                <span>Energie 0-10</span>
+                <input id="checkin-energy" name="energy" type="number" min="0" max="10" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Stress 0-10</span>
+                <input id="checkin-stress" name="stress" type="number" min="0" max="10" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Stimmung/Fokus 0-10</span>
+                <input id="checkin-focus" name="moodFocus" type="number" min="0" max="10" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Reflux/Verdauung 0-10</span>
+                <input id="checkin-digestion-score" name="digestionScore" type="number" min="0" max="10" step="1" inputmode="numeric">
+              </label>
+
+              <fieldset class="wide checklist">
+                <legend>Schulter rechts</legend>
+                <label><input type="checkbox" name="shoulderFlags" value="Schmerz Ueberkopf"> Schmerz Ueberkopf</label>
+                <label><input type="checkbox" name="shoulderFlags" value="Schmerz Rueckgriff"> Schmerz Rueckgriff</label>
+                <label><input type="checkbox" name="shoulderFlags" value="Ruhe/Nacht-Schmerz"> Ruhe/Nacht-Schmerz</label>
+                <label><input type="checkbox" name="shoulderFlags" value="Kraftverlust"> Kraftverlust</label>
+                <label><input type="checkbox" name="shoulderFlags" value="Taubheit/Kribbeln"> Taubheit/Kribbeln</label>
+              </fieldset>
+
+              <label>
+                <span>Schulter Schmerz max 0-10</span>
+                <input id="checkin-shoulder-pain" name="shoulderPainMax" type="number" min="0" max="10" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Reha gemacht</span>
+                <select id="checkin-rehab-done" name="rehabDone">
+                  <option value="">Nicht erfasst</option>
+                  <option value="ja">ja</option>
+                  <option value="nein">nein</option>
+                </select>
+              </label>
+              <label>
+                <span>Training/Reha RPE 1-10</span>
+                <input id="checkin-training-rpe" name="trainingRpe" type="number" min="1" max="10" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Standard-Fruehstueck</span>
+                <select id="checkin-breakfast" name="standardBreakfast">
+                  <option value="">Nicht erfasst</option>
+                  <option value="unveraendert">unveraendert</option>
+                  <option value="geaendert">geaendert</option>
+                  <option value="ausgelassen">ausgelassen</option>
+                </select>
+              </label>
+
+              <label class="wide">
+                <span>Training/Bewegung</span>
+                <input id="checkin-training" name="training" type="text" placeholder="Kraft, Ausdauer, Spaziergang, Physio/Reha, Pausentag; Dauer und Intensitaet">
+              </label>
+
+              <fieldset class="wide checklist">
+                <legend>Ernaehrungskontext</legend>
+                <label><input type="checkbox" name="nutritionFlags" value="Huelsenfruechte"> Huelsenfruechte</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Tofu"> Tofu</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Tempeh"> Tempeh</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Seitan"> Seitan</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Proteinshake"> Proteinshake</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Suess/Snacks"> Suess/Snacks</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Weissmehl/Saft"> Weissmehl/Saft</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Sehr kohlenhydratreich"> Sehr kohlenhydratreich</label>
+                <label><input type="checkbox" name="nutritionFlags" value="Spaetes Essen"> Spaetes Essen</label>
+              </fieldset>
+
+              <label>
+                <span>Protein grob (g)</span>
+                <input id="checkin-protein" name="proteinEstimate" type="number" min="0" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Koffein gesamt (mg)</span>
+                <input id="checkin-caffeine" name="caffeineMg" type="number" min="0" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Letztes Koffein</span>
+                <input id="checkin-last-caffeine" name="lastCaffeineTime" type="time">
+              </label>
+              <label>
+                <span>Alkohol (Einheiten)</span>
+                <input id="checkin-alcohol" name="alcoholUnits" type="number" min="0" step="0.5" inputmode="decimal">
+              </label>
+
+              <fieldset class="wide checklist">
+                <legend>Medikamente/Supplemente</legend>
+                <label><input type="checkbox" name="medicationFlags" value="Pantoprazol"> Pantoprazol</label>
+                <label><input type="checkbox" name="medicationFlags" value="Doppelherz"> Doppelherz</label>
+                <label><input type="checkbox" name="medicationFlags" value="Vitamin D3"> Vitamin D3</label>
+                <label><input type="checkbox" name="medicationFlags" value="Nebenwirkung"> Nebenwirkung</label>
+              </fieldset>
+
+              <label class="wide">
+                <span>Verdauung/Reflux</span>
+                <textarea id="checkin-digestion" name="digestion" rows="3" placeholder="Reflux, Bauchbeschwerden, Durchfall/Verstopfung, Reaktion auf Flohsamenschalen, Kaffee, Hafermilch oder Proteinpulver"></textarea>
+              </label>
+              <label class="wide">
+                <span>Besonderes</span>
+                <textarea id="checkin-notes" name="notes" rows="4" placeholder="Infekt, Reise, schlechte Nacht, ungewoehnlicher Stress, ungewoehnliches Training, spaetes Essen"></textarea>
+              </label>
+
+              <div class="form-actions wide">
+                <button class="primary-button" type="submit">Check-in speichern</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="view" id="view-entry" aria-labelledby="entry-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">Neue Beobachtung</p>
+                <h2 id="entry-title">Mahlzeit oder Routine eintragen</h2>
+              </div>
+              <button class="ghost-button" type="button" id="reset-form">Formular leeren</button>
+            </div>
+
+            <form id="entry-form" class="form-grid">
+              <input type="hidden" id="entry-id">
+
+              <label>
+                <span>Datum</span>
+                <input id="entry-date" name="date" type="date" required>
+              </label>
+              <label>
+                <span>Uhrzeit</span>
+                <input id="entry-time" name="time" type="time" required>
+              </label>
+              <label>
+                <span>Art</span>
+                <select id="entry-meal-type" name="mealType">
+                  <option>Fruehstueck</option>
+                  <option>Mittagessen</option>
+                  <option>Abendessen</option>
+                  <option>Snack</option>
+                  <option>Getraenk</option>
+                  <option>Medikament/Supplement</option>
+                  <option>Trainingstag-Kontext</option>
+                </select>
+              </label>
+              <label>
+                <span>Protein geschaetzt (g)</span>
+                <input id="entry-protein" name="protein" type="number" min="0" step="1" inputmode="numeric">
+              </label>
+
+              <label class="wide">
+                <span>Lebensmittel und Mengen</span>
+                <textarea id="entry-foods" name="foods" rows="4" placeholder="z. B. 250 g Sojaghurt, 40 g Haferflocken, 20 g Proteinpulver"></textarea>
+              </label>
+              <label class="wide">
+                <span>Proteinquelle</span>
+                <input id="entry-protein-source" name="proteinSource" type="text" placeholder="z. B. Sojaghurt, Tofu, Linsen, Proteinpulver">
+              </label>
+
+              <fieldset class="wide checklist">
+                <legend>Ballaststoff- und Kohlenhydrat-Kontext</legend>
+                <label><input type="checkbox" name="fiber" value="Huelsenfruechte"> Huelsenfruechte</label>
+                <label><input type="checkbox" name="fiber" value="Vollkorn"> Vollkorn</label>
+                <label><input type="checkbox" name="fiber" value="Gemuese"> Gemuese</label>
+                <label><input type="checkbox" name="fiber" value="Obst"> Obst</label>
+                <label><input type="checkbox" name="fiber" value="Nuesse/Samen"> Nuesse/Samen</label>
+                <label><input type="checkbox" name="fiber" value="Suess/Weissmehl"> Suess/Weissmehl</label>
+              </fieldset>
+
+              <label>
+                <span>Koffein (mg)</span>
+                <input id="entry-caffeine" name="caffeineMg" type="number" min="0" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Alkohol (Einheiten)</span>
+                <input id="entry-alcohol" name="alcoholUnits" type="number" min="0" step="0.5" inputmode="decimal">
+              </label>
+              <label>
+                <span>Hunger 1-5</span>
+                <input id="entry-hunger" name="hunger" type="number" min="1" max="5" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Energie 1-5</span>
+                <input id="entry-energy" name="energy" type="number" min="1" max="5" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Reflux 0-5</span>
+                <input id="entry-reflux" name="reflux" type="number" min="0" max="5" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Stress 0-5</span>
+                <input id="entry-stress" name="stress" type="number" min="0" max="5" step="1" inputmode="numeric">
+              </label>
+              <label>
+                <span>Verdauung/Reflux Kontext</span>
+                <select id="entry-digestion" name="digestion">
+                  <option value="">Nicht erfasst</option>
+                  <option>unauffaellig</option>
+                  <option>Reflux</option>
+                  <option>Bauchbeschwerden</option>
+                  <option>Durchfall</option>
+                  <option>Verstopfung</option>
+                </select>
+              </label>
+              <label>
+                <span>Training/Schmerz Bezug</span>
+                <input id="entry-training-context" name="trainingContext" type="text" placeholder="z. B. nach Training, Schulter gereizt">
+              </label>
+
+              <label class="wide">
+                <span>Medikament/Supplement</span>
+                <input id="entry-medication" name="medication" type="text" placeholder="z. B. Pantoprazol 20 mg, B12, Vitamin D">
+              </label>
+              <label class="wide">
+                <span>Besonderheiten</span>
+                <textarea id="entry-notes" name="notes" rows="4" placeholder="Verdauung, Schmerz, Training, spaete Mahlzeit, Restaurant, Produktfoto vorhanden"></textarea>
+              </label>
+
+              <div class="form-actions wide">
+                <button class="primary-button" type="submit">Speichern</button>
+                <button class="secondary-button" type="button" id="save-and-next">Speichern und weiterer Eintrag</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="view" id="view-routines" aria-labelledby="routines-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">Wiederkehrendes</p>
+                <h2 id="routines-title">Routinen und Zielwerte</h2>
+              </div>
+            </div>
+
+            <form id="goals-form" class="settings-row">
+              <label>
+                <span>Protein-Ziel pro Tag (g)</span>
+                <input id="goal-protein" type="number" min="0" step="5">
+              </label>
+              <label>
+                <span>Koffein-Grenze</span>
+                <input id="goal-caffeine-cutoff" type="time">
+              </label>
+              <label>
+                <span>Spaetmahlzeit ab</span>
+                <input id="goal-late-cutoff" type="time">
+              </label>
+              <button class="primary-button" type="submit">Ziele speichern</button>
+            </form>
+
+            <div class="split-layout">
+              <section class="panel">
+                <div class="panel-header">
+                  <h3>Aktive Routinen</h3>
+                </div>
+                <div id="routine-list" class="routine-list"></div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-header">
+                  <h3>Routine anlegen</h3>
+                </div>
+                <form id="routine-form" class="stacked-form">
+                  <input type="hidden" id="routine-id">
+                  <label>
+                    <span>Name</span>
+                    <input id="routine-name" type="text" required placeholder="z. B. Standard-Fruehstueck">
+                  </label>
+                  <label>
+                    <span>Zeitpunkt</span>
+                    <input id="routine-timing" type="text" placeholder="z. B. 30-45 Minuten nach Pantoprazol">
+                  </label>
+                  <label>
+                    <span>Details</span>
+                    <textarea id="routine-details" rows="5" placeholder="Zutaten, Mengen, Supplemente, Kontext"></textarea>
+                  </label>
+                  <button class="primary-button" type="submit">Routine speichern</button>
+                </form>
+              </section>
+            </div>
+          </section>
+
+          <section class="view" id="view-review" aria-labelledby="review-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">3- bis 7-Tage-Protokoll</p>
+                <h2 id="review-title">Review</h2>
+              </div>
+              <div class="range-controls">
+                <label>
+                  <span>Von</span>
+                  <input id="review-from" type="date">
+                </label>
+                <label>
+                  <span>Bis</span>
+                  <input id="review-to" type="date">
+                </label>
+              </div>
+            </div>
+            <div id="review-summary" class="review-summary"></div>
+            <div class="form-actions">
+              <button class="secondary-button" type="button" id="copy-review">Review-Text kopieren</button>
+            </div>
+          </section>
+
+          <section class="view" id="view-data" aria-labelledby="data-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">Backup und Uebergabe</p>
+                <h2 id="data-title">Daten</h2>
+              </div>
+            </div>
+
+            <div class="data-actions">
+              <button class="primary-button" type="button" id="export-json">JSON exportieren</button>
+              <button class="secondary-button" type="button" id="export-csv">CSV exportieren</button>
+              <label class="import-button">
+                JSON importieren
+                <input id="import-json" type="file" accept="application/json">
+              </label>
+              <button class="danger-button" type="button" id="clear-data">Lokale Daten loeschen</button>
+            </div>
+
+            <section class="panel">
+              <h3>Privatsphaere</h3>
+              <p>
+                Diese App speichert Daten nur in diesem Browserprofil. Fuer Geraetewechsel, Backup oder Coach-Uebergabe
+                regelmaessig JSON oder CSV exportieren.
+              </p>
+            </section>
+          </section>
+
+          <section class="view" id="view-sync" aria-labelledby="sync-title">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">iPhone zu GitHub</p>
+                <h2 id="sync-title">Repo-Sync</h2>
+              </div>
+            </div>
+
+            <form id="github-form" class="form-grid compact-form">
+              <label>
+                <span>Owner</span>
+                <input id="github-owner" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+              </label>
+              <label>
+                <span>Repo</span>
+                <input id="github-repo" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+              </label>
+              <label>
+                <span>Branch</span>
+                <input id="github-branch" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+              </label>
+              <label>
+                <span>Zielordner</span>
+                <input id="github-path" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+              </label>
+              <label class="wide">
+                <span>GitHub Token</span>
+                <input id="github-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Fine-grained token mit Contents read/write">
+              </label>
+              <div class="form-actions wide">
+                <button class="primary-button" type="submit">Sync-Einstellungen speichern</button>
+                <button class="secondary-button" type="button" id="sync-today">Heute ins Repo schreiben</button>
+                <button class="secondary-button" type="button" id="sync-range">Review-Zeitraum schreiben</button>
+              </div>
+            </form>
+
+            <section class="panel sync-status-panel">
+              <h3>Status</h3>
+              <p id="sync-status">Noch kein Sync ausgefuehrt.</p>
+              <p>
+                Empfohlen ist ein Fine-grained GitHub Token nur fuer dieses Repository mit
+                `Contents: Read and write`. Der Token bleibt im Safari-Browserprofil und wird nicht exportiert.
+              </p>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <template id="empty-state-template">
+      <div class="empty-state">
+        <strong>Noch keine Eintraege</strong>
+        <span>Lege den ersten Eintrag an oder nutze eine Schnellvorlage.</span>
+      </div>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
